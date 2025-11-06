@@ -24,35 +24,68 @@ def get_resource(name):
 
 def iter_resources():
     # Use the modern conversations API which unifies channels, groups, and DMs
+    # Note: Handles pagination to fetch all resources
+
     # Public channels
     try:
-        response = slack.client().conversations_list(types="public_channel")
-        for channel in response.get("channels", []):
-            yield "channel", channel
+        cursor = None
+        while True:
+            response = slack.client().conversations_list(
+                types="public_channel",
+                limit=500,
+                cursor=cursor
+            )
+            for channel in response.get("channels", []):
+                yield "channel", channel
+
+            # Check for more pages
+            cursor = response.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                break
     except slack.BaseError:
         pass
 
     # Private channels (groups)
     try:
-        response = slack.client().conversations_list(types="private_channel")
-        for channel in response.get("channels", []):
-            yield "group", channel
+        cursor = None
+        while True:
+            response = slack.client().conversations_list(
+                types="private_channel",
+                limit=500,
+                cursor=cursor
+            )
+            for channel in response.get("channels", []):
+                yield "group", channel
+
+            cursor = response.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                break
     except slack.BaseError:
         pass
 
     # Direct messages - need to add username since DMs don't have a "name" field
     try:
-        response = slack.client().conversations_list(types="im")
-        for channel in response.get("channels", []):
-            # DMs have a "user" field, we need to get the username
-            if "user" in channel:
-                try:
-                    username = names.username(channel["user"])
-                    channel["name"] = username
-                except:
-                    # If we can't get the username, skip this DM
-                    continue
-            yield "im", channel
+        cursor = None
+        while True:
+            response = slack.client().conversations_list(
+                types="im",
+                limit=500,
+                cursor=cursor
+            )
+            for channel in response.get("channels", []):
+                # DMs have a "user" field, we need to get the username
+                if "user" in channel:
+                    try:
+                        username = names.username(channel["user"])
+                        channel["name"] = username
+                    except:
+                        # If we can't get the username, skip this DM
+                        continue
+                yield "im", channel
+
+            cursor = response.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                break
     except slack.BaseError:
         pass
 
