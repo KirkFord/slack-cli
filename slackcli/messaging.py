@@ -23,54 +23,76 @@ def get_resource(name):
 
 
 def iter_resources():
-    # We should probably switch to the conversations.list method once Slacker
-    # supports it:
-    # https://api.slack.com/methods/conversations.list
-    # https://github.com/os/slacker/issues/116
-    fetchers = [
-        ("channel", lambda: slack.client().channels.list().body["channels"]),
-        ("group", lambda: slack.client().groups.list().body["groups"]),
-        ("user", lambda: slack.client().users.list().body["members"]),
-    ]
-    for resource_type, fetcher in fetchers:
-        for resource in fetcher():
-            yield resource_type, resource
+    # Use the modern conversations API which unifies channels, groups, and DMs
+    # Public channels
+    try:
+        response = slack.client().conversations_list(types="public_channel")
+        for channel in response.get("channels", []):
+            yield "channel", channel
+    except slack.BaseError:
+        pass
+
+    # Private channels (groups)
+    try:
+        response = slack.client().conversations_list(types="private_channel")
+        for channel in response.get("channels", []):
+            yield "group", channel
+    except slack.BaseError:
+        pass
+
+    # Direct messages
+    try:
+        response = slack.client().conversations_list(types="im")
+        for channel in response.get("channels", []):
+            yield "im", channel
+    except slack.BaseError:
+        pass
+
+    # Users
+    try:
+        response = slack.client().users_list()
+        for user in response.get("members", []):
+            yield "user", user
+    except slack.BaseError:
+        pass
 
 
 def upload_file(path, destination_id):
-    return slack.client().files.upload(path, channels=destination_id)
+    # Use the new files_upload_v2 method (files_upload deprecated May 2025)
+    return slack.client().files_upload_v2(
+        file=path,
+        channel=destination_id
+    )
 
 
 def print_messages(source_name, count=20):
     resource_type, resource = get_resource(source_name)
-    # channel->channels, group->groups, but im->im :-(
-    method_name = resource_type + "s"
+
+    # Get the conversation ID
+    conversation_id = resource["id"]
+
     if resource_type == "user":
-        # In case of conversation with a user, we need to find the corresponding IM object
-        resource = [
-            i
-            for i in slack.client().im.list().body["ims"]
-            if i["user"] == resource["id"]
-        ][0]
-        method_name = "im"
+        # For users, we need to find or create a DM conversation
+        response = slack.client().conversations_open(users=resource["id"])
+        conversation_id = response["channel"]["id"]
 
-    history = getattr(slack.client(), method_name).history
-
+    # Use the modern conversations.history API for all conversation types
     messages = []
     latest = None
     while len(messages) < count:
-        response_body = history(
-            resource["id"],
-            count=min(count - len(messages), 1000),
+        response = slack.client().conversations_history(
+            channel=conversation_id,
+            limit=min(count - len(messages), 1000),
             latest=latest,
             inclusive=False,
-        ).body
+        )
         # Note that in the response, messages are sorted by *descending* date
         # (most recent first)
-        messages += response_body["messages"]
-        if not response_body["has_more"]:
+        messages += response.get("messages", [])
+        if not response.get("has_more", False):
             break
-        latest = messages[-1]["ts"]
+        if messages:
+            latest = messages[-1]["ts"]
 
     # Print the last count messages, from last to first
     for message in messages[::-1]:
@@ -86,8 +108,13 @@ def post_message(destination_id, text, pre=False, username=None):
             slack.update_status_fields(**status_update_fields)
             return
     text = format_outgoing_message(text)
-    slack.client().chat.post_message(
-        destination_id, text, as_user=(not username), username=username,
+
+    # Use the modern chat_postMessage API with updated parameters
+    slack.client().chat_postMessage(
+        channel=destination_id,
+        text=text,
+        as_user=(not username),
+        username=username,
     )
 
 

@@ -27,9 +27,8 @@ class UserIndex(Singleton):
 
     def username(self, user_id):
         if user_id not in self.user_id_index:
-            self.user_id_index[user_id] = (
-                slack.client().users.info(user_id).body["user"]["name"]
-            )
+            response = slack.client().users_info(user=user_id)
+            self.user_id_index[user_id] = response["user"]["name"]
         return self.user_id_index[user_id]
 
     def user_id(self, slack_name):
@@ -39,16 +38,16 @@ class UserIndex(Singleton):
         a user by its username. Ideally, we should cache this list.
         """
         if not self.user_name_index:
-            members = slack.client().users.list().body["members"]
+            response = slack.client().users_list()
+            members = response.get("members", [])
             for member in members:
                 self.user_name_index[member["name"]] = member["id"]
         return self.user_name_index[slack_name.lower()]
 
     def botname(self, bot_id):
         if bot_id not in self.bot_index:
-            self.bot_index[bot_id] = (
-                slack.client().bots.info(bot_id).body["bot"]["name"]
-            )
+            response = slack.client().bots_info(bot=bot_id)
+            self.bot_index[bot_id] = response["bot"]["name"]
         return self.bot_index[bot_id]
 
 
@@ -94,11 +93,12 @@ class SourceIndex(Singleton):
 
     def __init__(self):
         self.source_index = {}
-        # TODO much of the time lost at boot comes from this loop. This could
-        # maybe be run later? If we had the conversations API we could retrieve
-        # user names at run time.
-        for im in slack.client().im.list().body["ims"]:
-            self.source_index[im["id"]] = username(im["user"])
+        # Use the modern conversations API to get DMs
+        response = slack.client().conversations_list(types="im")
+        for im in response.get("channels", []):
+            # For DMs, get the username from the user ID
+            if "user" in im:
+                self.source_index[im["id"]] = username(im["user"])
 
     def name(self, source_id):
         if source_id not in self.source_index:
@@ -107,12 +107,9 @@ class SourceIndex(Singleton):
 
     @staticmethod
     def _get_source_name(source_id):
-        if source_id.startswith("G"):
-            # We need to process groups and channels differently until slacker
-            # implements the `conversations` API.
-            # https://api.slack.com/methods/conversations.info
-            return slack.client().groups.info(source_id).body["group"]["name"]
-        return slack.client().channels.info(source_id).body["channel"]["name"]
+        # Use the unified conversations.info API for all conversation types
+        response = slack.client().conversations_info(channel=source_id)
+        return response["channel"]["name"]
 
 
 def sourcename(source_id):

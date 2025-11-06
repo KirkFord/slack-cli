@@ -2,7 +2,8 @@ import json
 import re
 import sys
 
-import slacker
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 
 from . import errors
 from . import token
@@ -11,11 +12,14 @@ from . import messaging
 __all__ = ["client", "init"]
 
 
-BaseError = slacker.Error
+BaseError = SlackApiError
 
 
-class Slacker(slacker.Slacker):
+class SlackClient:
     INSTANCE = None
+
+    def __init__(self, user_token):
+        self._web_client = WebClient(token=user_token)
 
     @classmethod
     def create_instance(cls, user_token):
@@ -25,8 +29,12 @@ class Slacker(slacker.Slacker):
     def instance(cls):
         if cls.INSTANCE is None:
             # This is not supposed to happen
-            raise ValueError("Slacker client token was not undefined")
+            raise ValueError("Slack client token was not defined")
         return cls.INSTANCE
+
+    # Provide access to the WebClient for direct API calls
+    def __getattr__(self, name):
+        return getattr(self._web_client, name)
 
 
 def init(user_token=None, team=None):
@@ -45,8 +53,8 @@ def init(user_token=None, team=None):
             user_token = token.ask(team=team)
             must_save_token = True
 
-    # Initialize slacker client globally
-    Slacker.INSTANCE = slacker.Slacker(user_token)
+    # Initialize slack_sdk client globally
+    SlackClient.INSTANCE = SlackClient(user_token)
     if must_save_token:
         save_token(user_token, team=team)
 
@@ -54,16 +62,17 @@ def init(user_token=None, team=None):
 def save_token(user_token, team=None):
     # Always test token before saving
     try:
-        client().api.test()
-    except slacker.Error:
+        client().api_test()
+    except SlackApiError:
         raise errors.SlackCliError("Invalid Slack token: '{}'".format(user_token))
 
     # Get team
     try:
-        team = team or client().team.info().body["team"]["domain"]
-    except slacker.Error as e:
-        message = e.args[0]
-        if e.args[0] == "missing_scope":
+        response = client().team_info()
+        team = team or response["team"]["domain"]
+    except SlackApiError as e:
+        message = str(e)
+        if e.response.get("error") == "missing_scope":
             message = (
                 "Missing scope on token {}. This token requires the 'team:read' scope."
             ).format(user_token)
@@ -83,8 +92,8 @@ def save_token(user_token, team=None):
 
 
 def client():
-    return Slacker.instance()
+    return SlackClient.instance()
 
 
 def update_status_fields(**profile):
-    client().users.profile.set(profile=json.dumps(profile))
+    client().users_profile_set(profile=profile)

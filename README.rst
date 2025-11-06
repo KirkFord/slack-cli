@@ -2,7 +2,9 @@
 slack-cli
 =========
 
-⚠️ THIS PROJECT IS IN MAINTENANCE MODE. I have lost interest in Slack -- actually, the less I use Slack the better I feel. Thus I do not have the time nor the energy to make slack-cli compatible with the new Slack authentication mechanism. I will happily review and merge pull requests, though 🙂 If a contributor would like to step forward and start fixing issues, I could then transfer ownership of the project (after they have demonstrated proficiency and integrity).
+✨ **Version 3.0** - Fully modernized for 2025 Slack API standards! This version includes OAuth 2.0 authentication, Conversations API, Socket Mode for real-time messaging, and Python 3.7+ support.
+
+⚠️ **Breaking Changes**: Version 3.0 requires creating a new Slack App with modern OAuth tokens. Legacy tokens are no longer supported. See the migration guide below.
 
 Effectively interact with `Slack <https://slack.com/>`_ from the command line: send messages, upload files, send command output, pipe content... all from the confort of your terminal.
 
@@ -19,7 +21,19 @@ Quickstart
     $ slack-cli -d general "Hello everyone!"
 
 
-You will be asked to provide a Slack API token. It's easy, check out the `Tokens`_ section for a quickstart.
+You will be asked to provide a Slack API token. Check out the `Tokens`_ section below for setup instructions.
+
+Migration from v2.x
+===================
+
+If you're upgrading from version 2.x, you'll need to:
+
+1. **Python Version**: Upgrade to Python 3.7 or later
+2. **Create a New Slack App**: Legacy tokens are no longer supported. Follow the instructions in the `Tokens`_ section to create a modern Slack App
+3. **Update Your Token**: Delete your old token file and run slack-cli again to configure with your new bot token
+4. **Socket Mode for Streaming**: If you use the ``-s`` flag for real-time streaming, you'll need an app-level token (see `Real-Time Streaming Setup`_ below)
+
+The token configuration file location remains the same (``~/.config/slack-cli`` on Linux).
 
 Usage
 =====
@@ -213,23 +227,47 @@ If emojis are not your thing, you can disable them globally with the ``SLACK_CLI
 Tokens
 ~~~~~~
 
-To generate a token, create a `new Slack App <https://api.slack.com/apps/new>`__ and add it to your workspace.
+To generate a bot token for slack-cli:
 
-Grant API Permissions to your App, select all that apply (you probably want "chat:write"):
+1. Create a `new Slack App <https://api.slack.com/apps/new>`__ and add it to your workspace
+2. Under **OAuth & Permissions**, add the following Bot Token Scopes:
 
-.. figure:: https://raw.githubusercontent.com/regisb/slack-cli/master/docs/permissions.gif
-   :alt: Create App and add OAuth Scopes
+   Required scopes for basic functionality:
 
+   - ``channels:read`` - List public channels
+   - ``groups:read`` - List private channels
+   - ``im:read`` - List direct messages
+   - ``users:read`` - List users
+   - ``chat:write`` - Send messages
 
-This is an example of how it could look like:
+   Additional scopes for full functionality:
 
-.. figure:: https://raw.githubusercontent.com/regisb/slack-cli/master/docs/scope_example.png
-   :alt: Example scopes
+   - ``channels:history`` - Read message history from public channels
+   - ``groups:history`` - Read message history from private channels
+   - ``im:history`` - Read message history from DMs
+   - ``files:write`` - Upload files
+   - ``team:read`` - Get team info (optional, for multi-team support)
 
-Now hit the green ``Install App to workspace`` button, and you will be presented with a token you can use for authentication.
+3. Click **Install to Workspace** and authorize your app
+4. Copy the **Bot User OAuth Token** (starts with ``xoxb-``)
+5. Run slack-cli and paste the token when prompted
 
 .. figure:: https://raw.githubusercontent.com/regisb/slack-cli/master/docs/token.png
    :alt: OAuth Access Token
+
+Real-Time Streaming Setup
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to use real-time message streaming (``slack-cli -s general``), you need to:
+
+1. In your Slack App settings, go to **Socket Mode** and enable it
+2. Under **Basic Information** > **App-Level Tokens**, click **Generate Token and Scopes**
+3. Name it (e.g., "socket-mode") and add the ``connections:write`` scope
+4. Generate and copy the app-level token (starts with ``xapp-``)
+5. Subscribe to the ``message.channels`` event under **Event Subscriptions**
+6. Run ``slack-cli -s general`` and paste the app-level token when prompted
+
+The app-level token will be saved separately and only used for streaming.
 
 
 Development

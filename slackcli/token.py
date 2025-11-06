@@ -17,6 +17,7 @@ CONFIG_ROOT = os.environ.get(
     "SLACK_CLI_CONFIG_ROOT", appdirs.user_config_dir("slack-cli")
 )
 TOKEN_PATH = os.path.join(CONFIG_ROOT, "slack_token")
+APP_TOKEN_PATH = os.path.join(CONFIG_ROOT, "slack_app_token")
 TEAMS_PATH = os.path.join(CONFIG_ROOT, "teams.json")
 
 
@@ -48,10 +49,21 @@ def load(team=None):
 def ask(team=None):
     token = None
     while not token:
-        message = """In order to interact with the Slack API, slack-cli requires a valid Slack API
-token. To create and view your tokens, head over to:
+        message = """In order to interact with the Slack API, slack-cli requires a valid Slack API token.
 
-    https://api.slack.com/custom-integrations/legacy-tokens
+To get a token, create a new Slack App:
+1. Go to https://api.slack.com/apps/new
+2. Create an app and add it to your workspace
+3. Under "OAuth & Permissions", add the required scopes:
+   - For sending messages: chat:write, channels:read, groups:read, im:read, users:read
+   - For reading messages: channels:history, groups:history, im:history
+   - For file uploads: files:write
+   - For real-time streaming: connections:write (app-level token)
+4. Install the app to your workspace
+5. Copy the "Bot User OAuth Token" (starts with xoxb-)
+
+For real-time message streaming (-s flag), you'll also need an app-level token.
+See the README for detailed setup instructions.
 
 This message will only appear once. After the first run, the Slack API token
 will be stored in a local configuration file.
@@ -99,3 +111,47 @@ def ensure_directory_exists(path):
                 " modified by setting the SLACK_CLI_CONFIG_ROOT environment variable"
             ).format(directory)
             raise errors.ConfigSaveError(message)
+
+
+# App-level token functions for Socket Mode
+def load_app_token():
+    """Load app-level token for Socket Mode (streaming)."""
+    # Read from environment variable first
+    token = os.environ.get("SLACK_APP_TOKEN")
+    if token:
+        return token
+
+    # Read from local config file
+    try:
+        with open(APP_TOKEN_PATH) as app_token_file:
+            return app_token_file.read().strip()
+    except IOError:
+        return None
+
+
+def ask_app_token():
+    """Prompt user for app-level token needed for Socket Mode."""
+    token = None
+    while not token:
+        message = """To use real-time message streaming, slack-cli requires an app-level token.
+
+To create an app-level token:
+1. Go to your Slack App settings: https://api.slack.com/apps
+2. Select your app
+3. Go to "Basic Information" > "App-Level Tokens"
+4. Click "Generate Token and Scopes"
+5. Name it (e.g., "socket-mode")
+6. Add the "connections:write" scope
+7. Generate and copy the token (starts with xapp-)
+
+Your Slack app-level token: """
+        token = ask_user(message).strip()
+    return token
+
+
+def save_app_token(token):
+    """Save app-level token to disk."""
+    ensure_directory_exists(APP_TOKEN_PATH)
+    with open(APP_TOKEN_PATH, "w") as app_token_file:
+        app_token_file.write(token)
+    os.chmod(APP_TOKEN_PATH, stat.S_IREAD | stat.S_IWRITE)

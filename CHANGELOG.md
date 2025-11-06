@@ -1,5 +1,66 @@
 # Changelog
 
+## v3.0.0 (2025-01-06) - Major Modernization Update
+
+**🎉 Fully modernized for 2025 Slack API standards!**
+
+### Breaking Changes
+
+- **Python 3.7+ Required**: Dropped support for Python 2 and Python 3.3-3.6
+- **Legacy Tokens No Longer Supported**: Must create a modern Slack App with OAuth 2.0
+  - Bot tokens (`xoxb-`) are now required instead of legacy tokens
+  - Legacy token URL removed from prompts
+- **Socket Mode for Streaming**: Real-time message streaming (`-s` flag) now requires an app-level token (`xapp-`)
+  - Old RTM API replaced with modern Socket Mode
+  - Users must enable Socket Mode in their Slack App settings
+
+### Migration Guide
+
+For users upgrading from v2.x:
+
+1. Upgrade to Python 3.7 or later
+2. Create a new Slack App at https://api.slack.com/apps/new
+3. Add required OAuth scopes (see README for full list):
+   - `channels:read`, `groups:read`, `im:read`, `users:read`
+   - `chat:write`, `channels:history`, `groups:history`, `im:history`
+   - `files:write` (for file uploads)
+4. Install app to workspace and copy Bot User OAuth Token
+5. Delete old token file: `rm ~/.config/slack-cli/slack_token`
+6. Run slack-cli and enter your new bot token
+7. For streaming: Enable Socket Mode and create app-level token with `connections:write` scope
+
+### New Features & Improvements
+
+- **Modern Slack SDK**: Migrated from deprecated `slacker` library to official `slack_sdk` (v3.37.0+)
+- **Conversations API**: All API calls now use the modern, unified Conversations API
+  - `conversations.list` replaces deprecated `channels.list`, `groups.list`, `im.list`
+  - `conversations.history` replaces separate history methods
+  - `conversations.info` provides unified channel/group information
+- **Updated File Upload**: Migrated to `files_upload_v2` (old method deprecated May 2025)
+- **Socket Mode**: Modern WebSocket-based real-time messaging
+- **Better Error Handling**: Improved error messages with `SlackApiError`
+- **Updated Documentation**: Comprehensive migration guide and setup instructions
+
+### Technical Changes
+
+- Replaced `slacker.Slacker` with `slack_sdk.WebClient`
+- Updated all API method calls to use snake_case (e.g., `users_info`, `chat_postMessage`)
+- API responses now return dicts directly (no `.body` attribute)
+- Added app-level token storage for Socket Mode
+- Removed `websocket-client` dependency (handled by slack_sdk)
+
+### Deprecation Notices
+
+The following APIs used in v2.x are now fully replaced:
+
+- ❌ `rtm.start()` → ✅ Socket Mode with Events API
+- ❌ `channels.list()` → ✅ `conversations.list(types="public_channel")`
+- ❌ `groups.list()` → ✅ `conversations.list(types="private_channel")`
+- ❌ `im.list()` → ✅ `conversations.list(types="im")`
+- ❌ `files.upload()` → ✅ `files_upload_v2()`
+
+---
+
 ## v2.2.7 (2020-05-11)
 
 - Support `/status clear` and extended status updates.
