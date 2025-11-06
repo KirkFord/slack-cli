@@ -2,13 +2,30 @@
 slack-cli
 =========
 
-✨ **Version 3.0** - Fully modernized for 2025 Slack API standards! This version includes OAuth 2.0 authentication, Conversations API, Socket Mode for real-time messaging, and Python 3.7+ support.
+**Modernized fork by Kirk Ford** - Bringing this awesome CLI tool into 2025! 🚀
 
-⚠️ **Breaking Changes**: Version 3.0 requires creating a new Slack App with modern OAuth tokens. Legacy tokens are no longer supported. See the migration guide below.
+This is a fully modernized version of the original `slack-cli <https://github.com/regisb/slack-cli>`_ by Régis Behmo. The original project was in maintenance mode, so I've updated it to work with current Slack API standards.
 
-Effectively interact with `Slack <https://slack.com/>`_ from the command line: send messages, upload files, send command output, pipe content... all from the confort of your terminal.
+What's New in v3.0
+==================
 
-Member of dozens of Slack teams? No worries, with ``slack-cli`` you can easily switch from one team to another.
+✨ **Fully compatible with 2025 Slack API standards:**
+
+- Modern OAuth 2.0 authentication (bot & user tokens)
+- Conversations API (replaces deprecated channels/groups/IM APIs)
+- Socket Mode for real-time messaging
+- Official ``slack_sdk`` library (replaced deprecated ``slacker``)
+- Python 3.7+ support
+- Bug fixes for DM messaging and username customization
+
+**Upstream PR**: Contributing these changes back to the original project at `#45 <https://github.com/regisb/slack-cli/pull/45>`_
+
+About slack-cli
+===============
+
+Interact with `Slack <https://slack.com/>`_ directly from your command line: send messages, upload files, pipe content, stream messages in real-time... all from the comfort of your terminal.
+
+Perfect for automation, CI/CD pipelines, server monitoring, and productivity workflows.
 
 .. image:: https://raw.githubusercontent.com/regisb/slack-cli/master/docs/demo.png
 
@@ -17,11 +34,11 @@ Quickstart
 
 ::
 
-    $ pip install slack-cli
+    $ pip install git+https://github.com/KirkFord/slack-cli.git
     $ slack-cli -d general "Hello everyone!"
 
 
-You will be asked to provide a Slack API token. Check out the `Tokens`_ section below for setup instructions.
+You will be asked to provide a Slack API token on first run. Check out the `Tokens`_ section below for setup instructions.
 
 Migration from v2.x
 ===================
@@ -273,14 +290,30 @@ The app-level token will be saved separately and only used for streaming.
 Development
 -----------
 
+About This Fork
+~~~~~~~~~~~~~~~
+
+This is Kirk Ford's modernized fork of the original `slack-cli <https://github.com/regisb/slack-cli>`_ project. All v3.0 modernization work was completed in collaboration with Claude Code to bring this tool up to 2025 standards.
+
+**Original Author**: Régis Behmo (`@regisb <https://github.com/regisb>`_)
+
+**Modernization**: Kirk Ford (`@KirkFord <https://github.com/KirkFord>`_)
+
+**Upstream PR**: `#45 <https://github.com/regisb/slack-cli/pull/45>`_ - Contributing these improvements back to the original project
+
 Contributions
 ~~~~~~~~~~~~~
 
-I am very much open to comments! Please don't be afraid to `raise issues <https://github.com/regisb/slack-cli/issues>`_ or `open pull requests <https://github.com/regisb/slack-cli/pulls>`_.
+Found a bug or have a feature request? Please `open an issue <https://github.com/KirkFord/slack-cli/issues>`_ or submit a pull request!
 
 This work is licensed under the terms of the `MIT License <https://tldrlegal.com/license/mit-license>`_
 
-Note that this project was initially a fork of `slacker-cli <https://github.com/juanpabloaj/slacker-cli/>`_ but the two projects have now considerably diverged.
+Project History
+~~~~~~~~~~~~~~~
+
+- **Original Project**: `slacker-cli <https://github.com/juanpabloaj/slacker-cli/>`_ by Juan Pablo Arenas
+- **slack-cli v1-v2**: Régis Behmo's complete rewrite and evolution
+- **slack-cli v3.0**: Kirk Ford's modernization for 2025 Slack API standards
 
 Tests
 ~~~~~
