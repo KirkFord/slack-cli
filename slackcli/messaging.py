@@ -40,10 +40,18 @@ def iter_resources():
     except slack.BaseError:
         pass
 
-    # Direct messages
+    # Direct messages - need to add username since DMs don't have a "name" field
     try:
         response = slack.client().conversations_list(types="im")
         for channel in response.get("channels", []):
+            # DMs have a "user" field, we need to get the username
+            if "user" in channel:
+                try:
+                    username = names.username(channel["user"])
+                    channel["name"] = username
+                except:
+                    # If we can't get the username, skip this DM
+                    continue
             yield "im", channel
     except slack.BaseError:
         pass
@@ -109,13 +117,17 @@ def post_message(destination_id, text, pre=False, username=None):
             return
     text = format_outgoing_message(text)
 
-    # Use the modern chat_postMessage API with updated parameters
-    slack.client().chat_postMessage(
-        channel=destination_id,
-        text=text,
-        as_user=(not username),
-        username=username,
-    )
+    # Use the modern chat_postMessage API
+    # Note: as_user is deprecated, just use username to customize display name
+    kwargs = {
+        "channel": destination_id,
+        "text": text,
+    }
+
+    if username:
+        kwargs["username"] = username
+
+    slack.client().chat_postMessage(**kwargs)
 
 
 def parse_status_update(text):
